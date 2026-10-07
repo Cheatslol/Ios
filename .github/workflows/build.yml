@@ -8,6 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Preparar proyecto
+        run: |
+          ZIP=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+          if [ -n "$ZIP" ]; then
+            echo "Zip encontrado: $ZIP"
+            unzip -q "$ZIP" -d project
+          fi
+          SETTINGS=$(find . -name "settings.gradle.kts" -not -path "*__MACOSX*" | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "No encontre settings.gradle.kts. Revisa que el zip este en el repositorio."
+            exit 1
+          fi
+          echo "ROOT=$(dirname "$SETTINGS")" >> $GITHUB_ENV
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -15,8 +28,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
-      - run: gradle assembleDebug --no-daemon
+      - name: Compilar APK
+        run: gradle assembleDebug --no-daemon
+        working-directory: ${{ env.ROOT }}
       - uses: actions/upload-artifact@v4
         with:
           name: iLauncher-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: ${{ env.ROOT }}/app/build/outputs/apk/debug/*.apk
+          
